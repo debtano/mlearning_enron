@@ -1,0 +1,8 @@
+(lp0
+S'poi'
+p1
+aS'salary'
+p2
+aS'cash_from_stock'
+p3
+a.
