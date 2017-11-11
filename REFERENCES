@@ -6,3 +6,6 @@ Python for Data Analysis, Data Wrangling with Pandas, NumPy, and IPython – Wes
 Hands-On Machine Learning with Scikit-Learn and TensorFlow, Concepts, Tools, and Techniques to Build Intelligent Systems – Aurélien Géron
 http://www.investopedia.com/terms/r/restrictedstock.asp
 Introduction to Machine Learning with Python, A Guide for Data Scientists – Andreas C. Müller, Sarah Guido
+https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.to_dict.html
+https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.as_matrix.html
+
