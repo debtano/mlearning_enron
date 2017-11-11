@@ -110,7 +110,7 @@ from sklearn.model_selection import train_test_split
 features_train, features_test, labels_train, labels_test = train_test_split(features, labels, random_state=0, test_size=.3)
 
 ### OK, 15% of high scored features will be used as my_features_list
-select = SelectPercentile(percentile=15)
+select = SelectPercentile(percentile=30)
 select.fit(features_train, labels_train)
 feats = select.transform(features_train)
 
