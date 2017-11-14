@@ -44,7 +44,7 @@ Algorithm and Parameters
 
 Since this is a supervised binary classification problem i checked several algorithms used in tha field : gaussianNB, k-neighbords, RandomTreesClasiffier, SVC and LogisticRegression (i provided the jupyter notebook as backup data where i was "playing around" with the aforementioned algoriths).
 
-Based on the above mentioned tests, i choose to compare performance between an algorithm that requires preprocessing (scaling) like SVC and an algorithm that did not -and had good results when checked- : RandomForestClassifier.
+Based on the above mentioned tests, i choose to compare performance between an algorithm that requires preprocessing (scaling) like LinearSVC, LogisticRegression and an algorithm that did not -and had good results when checked- : RandomForestClassifier.
 
 To compare performance of both choosen algorithms I used GridSearchCV that includes cross-validation. Based on the recommendations , and since the poi class has a low presence on the whole dataset i will use StratifiedShuffleSplit to
 split the dataset instead of train_test_split.
@@ -56,6 +56,8 @@ Tunning of parameters is very import because every machine learning problem has 
 I learned that GridSearch + CV is a good strategy to combine algorithm optimization and cross validation. Cross validation basically try to avoid the mistake of manually separate train and test data and then find out that the test data did not clearly and fair represents the train data so your model wont be trained as required.
 
 I also include a StandardScaler in the pipeline for feature scaling.
+
+Based on comparission results , LOgisticRegression provides low accuracy but accomplished Precision and Recall
 
 Metrics
 -------

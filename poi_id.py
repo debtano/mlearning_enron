@@ -104,15 +104,15 @@ print "features has this shape: {}".format(features.shape)
 ### To do our selection we'll need to fit SelectPercentile in the training data
 ### Import SelectPercentile and train_test_split
 from sklearn.feature_selection import SelectPercentile
-from sklearn.model_selection import train_test_split
+# from sklearn.model_selection import train_test_split
 
 ### Training data for feature selection
-features_train, features_test, labels_train, labels_test = train_test_split(features, labels, random_state=0, test_size=.3)
+# features_train, features_test, labels_train, labels_test = train_test_split(features, labels, random_state=0, test_size=.3)
 
 ### OK, 15% of high scored features will be used as my_features_list
 select = SelectPercentile(percentile=30)
-select.fit(features_train, labels_train)
-feats = select.transform(features_train)
+select.fit(features, labels)
+# feats = select.transform(features)
 
 ### find out which features get selected . mask is a boolean array
 mask = select.get_support()
@@ -122,6 +122,7 @@ my_enron_df_no_poi = my_enron_df.drop('poi', axis=1)
 features_selected = my_enron_df_no_poi.columns[mask]
 
 print "Features selected are: {}".format(features_selected)
+
 
 """
 	-my_feature_list- SelectPercentile-
@@ -135,7 +136,7 @@ print "Features selected are: {}".format(features_selected)
 
 ### 'poi' should be included first to my list
 
-my_features_list = ['poi','salary','cash_from_stock'] 
+my_features_list = ['poi','salary', 'bonus', 'exercised_stock_options', 'total_stock_value','cash_from_stock'] 
 
 """
 
@@ -156,60 +157,89 @@ my_dataset = my_enron_df.to_dict(orient='index')
 data = featureFormat(my_dataset, my_features_list, sort_keys = True)
 labels, features = targetFeatureSplit(data)
 
+"""
 
-### Task 4: Try a varity of classifiers
-### Please name your classifier clf for easy export below.
-### Note that if you want to do PCA or other multi-stage operations,
-### you'll need to use Pipelines. For more info:
-### http://scikit-learn.org/stable/modules/pipeline.html
+	-Compare some models-
+	Before moving into any additional modification or preparation of the data (like feature
+	scaling) I will test and compare the accuracy of some models and its parameters through
+	GridSearchCV since it will provide me with parameter tunning and cross validation.
+	Based on the accuracy scores i will select model and parameters. Some models requires
+	preprocessing (SVC) and some others dont (Trees in general)
+	To choose models i will try the recommended models for the type of dataset based on :
+	we are limited by the type of the problem (binary supervised classification), our class
+	is a binary class (poi-no poi) and the dataset is small (less than 150 data points) and 
+	wont have an excesive amount of dimmensions or features.
+	Based on the mentioned , i'd find out that RandomForesrClassifier, LogisticRegression and LinearSVC are the
+	ones to compare.  
+"""
 
-# from sklearn.naive_bayes import GaussianNB
-# clf = GaussianNB()
+### Let start looking at the best params and cv score for LinearSVC
+### Build the C options into a param_grid
+from sklearn.svm import LinearSVC
+svc_param_grid = {'C': [0.001, 0.01, 0.1, 1, 10, 100]}
 
-### I will be testing SVC against RandomForestClassifier using StandardScaler to feature
-### scaling , StratifiedShuffleSplit because the amount of samples with poi = 1 is very low
-### and train_test_split could end up failing to distribute the class proportional over 
-### the train and test sets. Also I will use GridSearchCV for parameters tuning.
-
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV
-from sklearn.pipeline import Pipeline, make_pipeline
-from sklearn.preprocessing import StandardScaler
+### Lets build our StratifiedShuffleSplit for the dataset
 from sklearn.model_selection import StratifiedShuffleSplit
+svc_cv = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
 
-pipe = Pipeline([('preprocessing', StandardScaler()), ('classifier', SVC())])
+### Build GridSearchCV 
+from sklearn.model_selection import GridSearchCV
+svc_grid = GridSearchCV(LinearSVC(), param_grid=svc_param_grid, cv=svc_cv)
 
-param_grid = [{'classifier': [SVC()], 'preprocessing': [StandardScaler(), None], 
-				'classifier__gamma': [0.001, 0.01, 0.1, 1, 10, 100],
-				'classifier__C': [0.001, 0.01, 0.1, 1, 10, 100]},
-				{'classifier': [RandomForestClassifier(n_estimators=10)],
-				 'preprocessing': [None], 'classifier__max_features': [1,2]}]
+### LinearSVC will work best with features scaling 
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+features_scaled = scaler.fit_transform(features)
 
-### Task 5: Tune your classifier to achieve better than .3 precision and recall 
-### using our testing script. Check the tester.py script in the final project
-### folder for details on the evaluation method, especially the test_classifier
-### function. Because of the small size of the dataset, the script uses
-### stratified shuffle split cross validation. For more info: 
-### http://scikit-learn.org/stable/modules/generated/sklearn.cross_validation.StratifiedShuffleSplit.html
+### Fit it
+svc_grid.fit(features_scaled, labels)
 
-#from sklearn.model_selection import train_test_split
-# features_train, features_test, labels_train, labels_test = train_test_split(features, labels, test_size=0.3, random_state=0)	
+### Print best params and score
+print("Best Linear SVC params: {}".format(svc_grid.best_params_))
+print("Best Linear SVC cv score: {}".format(svc_grid.best_score_))
 
-### Build the splited sets
-cv = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
+### Now Lets check RandomForestClassifier and get best params and score to compare
+from sklearn.ensemble import RandomForestClassifier
 
-### Tune parameters for the pipe 
-clf = GridSearchCV(pipe, param_grid, cv=cv)
-clf.fit(features, labels)
-print("Best params:\n{}\n".format(clf.best_params_))
-print("Best cross validation score:{:.2f}".format(clf.best_score_))
-# print("Test-set score:{:.2f}".format(clf.score(features_test, labels_test)))
+### Build max_depth and n_estimators for the param_grid
+tree_param_grid = {'max_depth': [1, 2, 4, 8], 'n_estimators': [1,5,10,20,50,100]}
 
+### Lets build our StratifiedShuffleSplit for the dataset
+tree_cv = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
 
-### Task 6: Dump your classifier, dataset, and features_list so anyone can
-### check your results. You do not need to change anything below, but make sure
-### that the version of poi_id.py that you submit can be run on its own and
-### generates the necessary .pkl files for validating your results.
+### Build GridSearchCV
+tree_grid = GridSearchCV(RandomForestClassifier(max_features=None, random_state=0), param_grid=tree_param_grid, cv=tree_cv)
 
-dump_classifier_and_data(clf, my_dataset, my_features_list)
+### Fit it
+tree_grid.fit(features, labels)
+
+### Print best params and score
+print("Best Forest params: {}".format(tree_grid.best_params_))
+print("Best Forest cv score: {}".format(tree_grid.best_score_))
+
+### Let start looking at the best params and cv score for LinearSVC
+### Build the C options into a param_grid
+from sklearn.linear_model import LogisticRegression
+lr_param_grid = {'C': [0.001, 0.01, 0.1, 1, 10, 100]}
+
+### Lets build our StratifiedShuffleSplit for the dataset
+# from sklearn.model_selection import StratifiedShuffleSplit
+lr_cv = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
+
+### Build GridSearchCV 
+from sklearn.model_selection import GridSearchCV
+lr_grid = GridSearchCV(LogisticRegression(), param_grid=svc_param_grid, cv=lr_cv)
+
+### LogisticRegression will work best with features scaling 
+from sklearn.preprocessing import StandardScaler
+lr_scaler = StandardScaler()
+lr_features_scaled = lr_scaler.fit_transform(features)
+
+### Fit it
+lr_grid.fit(lr_features_scaled, labels)
+
+### Print best params and score
+print("Best LogisticRegression params: {}".format(lr_grid.best_params_))
+print("Best LogisticRegression cv score: {}".format(lr_grid.best_score_))
+
+dump_classifier_and_data(lr_grid.best_estimator_, my_dataset, my_features_list)
