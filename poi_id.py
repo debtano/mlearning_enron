@@ -61,6 +61,8 @@ print "Features with no missing values: {}".format(has_not_missing_list)
 ### Drop email related features
 mail_features = ['to_messages','shared_receipt_with_poi','from_messages','from_this_person_to_poi','email_address','from_poi_to_this_person']
 my_dataset = my_dataset.drop(mail_features, axis=1)
+### Print and allocate a list with the remaining features
+initial_features = my_dataset.columns.values
 print "\n\nFeatures remaining after cleaning mail: {}".format(my_dataset.columns.values)
 
 ### Drop 'TOTAL' index and any data point with all 'NaN'
@@ -84,17 +86,22 @@ my_dataset = my_dataset.fillna(0)
 	...............
 
 
-
-
-
-
-### Fill 'NaN' with zero first
-my_enron_df = my_enron_df.fillna(0)
-
-
-
-
-
-### Verify remaining features
-print my_enron_df.columns
 """
+
+### First convert back the dataframe to extract features and labels
+my_dataset = my_dataset.to_dict(orient='index')
+
+### First we will train a model without new features . We'll use the "original_features" list
+### which cointains what features remain after cleaning mail features. Lets print the list
+print "\n\n This is the list of features for the first train and validation: {}".format(initial_features)
+
+### Extract features and labels from dataset for local testing
+data = featureFormat(my_dataset, initial_features, sort_keys = True)
+labels, features = targetFeatureSplit(data)
+
+### Initially, i wont tune parameters for the RandomForestClassifier, i want to understand 
+### features importance first
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.ensemble import RandomForestClassifier
+
+
