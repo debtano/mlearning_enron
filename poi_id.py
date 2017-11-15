@@ -89,19 +89,101 @@ my_dataset = my_dataset.fillna(0)
 """
 
 ### First convert back the dataframe to extract features and labels
-my_dataset = my_dataset.to_dict(orient='index')
+# my_dataset = my_dataset.to_dict(orient='index')
 
 ### First we will train a model without new features . We'll use the "original_features" list
 ### which cointains what features remain after cleaning mail features. Lets print the list
 print "\n\n This is the list of features for the first train and validation: {}".format(initial_features)
 
 ### Extract features and labels from dataset for local testing
-data = featureFormat(my_dataset, initial_features, sort_keys = True)
-labels, features = targetFeatureSplit(data)
 
-### Initially, i wont tune parameters for the RandomForestClassifier, i want to understand 
-### features importance first
+labels_series = my_dataset.loc[:, 'poi']
+labels = labels_series.values
+labels = labels.astype(np.int64)
+
+### Now the features, we ahould 'index' the slicing with a list of all the features BUT poi
+features_columns = []
+for col in my_dataset.columns:
+    if col != 'poi':
+        features_columns.append(col)
+
+### pandas 'as_matrix' helps convert pandas Series to ndarrays based on selected columns
+features = my_dataset.as_matrix(columns=features_columns)
+
+### Lets check the results. labels should be a 1D array and features a ND array 
+print "labels has this shape: {}".format(labels.shape)
+print "features has this shape: {}".format(features.shape)
+
+
+### Lets build the model for feature exploration
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import train_test_split
 
+features_train, features_test, labels_train, labels_test = train_test_split(features, labels, stratify=labels, random_state=42)
 
+forest = RandomForestClassifier(n_estimators=100, random_state=0)
+forest.fit(features_train, labels_train)
+feat_importance = forest.feature_importances_
+
+my_dataset_no_poi = my_dataset.drop('poi', axis=1)
+
+feat_names = my_dataset_no_poi.columns.values
+test = pd.Series(feat_importance,index=feat_names)
+print test[test > 0.10]
+
+### **************** Lets move to build a different feature list creating cash_from_stock **********
+### labels can be reused, features will be redefined
+### Firts copy the dataset 
+my_magic_dataset = my_dataset
+
+### Create new feature
+# my_magic_dataset['cash_from_stock'] = my_magic_dataset['exercised_stock_options'] + my_magic_dataset['restricted_stock']
+# my_magic_dataset['restricted_ratio'] = my_magic_dataset['exercised_stock_options'] / my_magic_dataset['restricted_stock']
+# my_magic_dataset['cash_from_stock'] = my_magic_dataset['exercised_stock_options'] + my_magic_dataset['restricted_stock']
+
+water_mark = my_magic_dataset['exercised_stock_options'].quantile(.80)
+my_magic_dataset['high_exercised_percentile'] = my_magic_dataset[my_magic_dataset['exercised_stock_options'] > water_mark]
+
+### Drop the non required features
+# non_required_features = ['exercised_stock_options','restricted_stock','total_stock_value']
+my_magic_dataset = my_magic_dataset.drop(non_required_features, axis=1)
+
+my_magic_dataset_no_poi = my_magic_dataset.drop('poi', axis=1)
+magic_feat = my_magic_dataset_no_poi.columns.values
+my_magic_features = my_magic_dataset_no_poi.as_matrix(columns=magic_feat)
+
+print "labels has this shape: {}".format(labels.shape)
+print "features has this shape: {}".format(my_magic_features.shape)
+
+magic_features_train, magic_features_test, labels_train, labels_test = train_test_split(my_magic_features, labels, stratify=labels, random_state=42)
+
+magic_forest = RandomForestClassifier(n_estimators=100, random_state=0)
+magic_forest.fit(magic_features_train ,labels_train)
+magic_feat_importance = magic_forest.feature_importances_
+
+# my_dataset_no_poi = my_dataset.drop('poi', axis=1)
+
+magic_feat_names = my_magic_dataset_no_poi.columns.values
+magic_test = pd.Series(magic_feat_importance,index=magic_feat_names)
+print "Magic features best score: {}".format(forest.best_score_)
+print magic_test[magic_test > 0.10]
+
+### Lets build 
+
+### Lets build our StratifiedShuffleSplit for the dataset
+### Build max_depth and n_estimators for the param_grid
+# tree_param_grid = {'max_depth': [1, 2, 4, 8], 'n_estimators': [1,5,10,20,50,100]}
+
+### Lets build our StratifiedShuffleSplit for the dataset
+#tree_cv = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
+
+### Build GridSearchCV
+# tree = RandomForestClassifier(max_features=None, random_state=0), param_grid=tree_param_grid, cv=tree_cv)
+
+### Fit it
+#tree_grid.fit(features, labels)
+
+#print tree_grid.features_importance_
+"""
